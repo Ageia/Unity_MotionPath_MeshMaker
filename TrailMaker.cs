@@ -15,12 +15,18 @@ public class MotionPath : MonoBehaviour
     [HideInInspector] public float EndFrame = 60;
     [HideInInspector] public float AnimationSlider;
 
-    public Vector3[] PathPos = new Vector3[0]; //실제 쓰는 최종 위치 데이터
 
     [HideInInspector]public AnimationClip[] AnimationClips;
     [HideInInspector]public string[] AniClipsName;
     [HideInInspector]public int SelectAniClip;
     [HideInInspector]public string PlayStateName; //재생할 스테이트 이름
+
+
+    ////////////////////////////////////////////
+    ////////        Path Info 1        ////////
+    ///////////////////////////////////////////
+    //Path Info 1
+    public Vector3[] PathPos = new Vector3[0]; //실제 쓰는 최종 위치 데이터
 
     [HideInInspector]public int PathFrame = 120;
 
@@ -29,14 +35,39 @@ public class MotionPath : MonoBehaviour
     [HideInInspector]public Color PathColor = new Color(0, 1, 0);
     [HideInInspector]public float PathWidth = 2;
 
-
-
-    
     //버텍스 평균치 구하는 계산 변수들
     [HideInInspector] public bool Average_AutoUpdate = true; //자동 업데이트
     public Vector3[] AveragePos = new Vector3[0]; //버텍스 평균 위치
     [HideInInspector] public int Average_Detail = 10; //디테일값
     [HideInInspector] public float Average_Distance = 0.25f; //버텍스들의 거리값
+
+
+
+    ////////////////////////////////////////////
+    ////////        Path Info 2        ////////
+    ///////////////////////////////////////////
+    //Path Info 2
+    public Vector3[] PathPos2 = new Vector3[0]; //실제 쓰는 최종 위치 데이터
+
+    [HideInInspector]public int PathFrame2 = 120;
+
+    [HideInInspector]public bool PathViewerSetting2 = false;
+    [HideInInspector]public bool AutoUpdate2 = true;
+    [HideInInspector]public Color PathColor2 = new Color(0, 1, 0);
+    [HideInInspector]public float PathWidth2 = 2;
+
+    //버텍스 평균치 구하는 계산 변수들
+    [HideInInspector] public bool Average_AutoUpdate2 = true; //자동 업데이트
+    public Vector3[] AveragePos2 = new Vector3[0]; //버텍스 평균 위치
+    [HideInInspector] public int Average_Detail2 = 10; //디테일값
+    [HideInInspector] public float Average_Distance2 = 0.25f; //버텍스들의 거리값
+
+
+    //Toolbar
+    [HideInInspector] public int SelectToolbar = 0;
+    [HideInInspector] public string[] ToolbarName = {"Animation", "Path 1", "Path 2", "Mesh"};
+
+
 
 
 
@@ -114,31 +145,76 @@ public class MotionPath_Editor : Editor
         ///////////////////////////////////////////////////////
         //////////////////      GUI     ///////////////////////
         ///////////////////////////////////////////////////////
+        GUILayout.Space(10);
+
+
+
         //애니메이터가 있을 때
         if (Ge.Animator != null)
         {
-            //애니메이션정보 GUI
-            GUILayout.BeginVertical("GroupBox");
-            DrawAniInfo();
-            GUILayout.EndVertical();
+            //툴바 리스트
+            Ge.SelectToolbar = GUILayout.Toolbar(Ge.SelectToolbar, Ge.ToolbarName, GUILayout.MinHeight(35));
 
-            //오브젝트 있을 때
-            if (Ge.TargetObject != null)
+            if(Ge.SelectToolbar == 0)
             {
-                //패스 GUI
+                //애니메이션정보 GUI
                 GUILayout.BeginVertical("GroupBox");
-                DrawPathInfo();
-                GUILayout.EndVertical();
-
-                //패스 To 버텍스위치 GUI
-                GUILayout.BeginVertical("GroupBox");
-                Viewer_AveragePos();
+                DrawAniInfo();
                 GUILayout.EndVertical();
             }
+
+            if(Ge.SelectToolbar == 1)
+            {
+                //오브젝트 있을 때
+                if (Ge.TargetObject != null)
+                {
+                    //패스 GUI
+                    GUILayout.BeginVertical("GroupBox");
+                    DrawPathInfo();
+                    GUILayout.EndVertical();
+
+                    //패스 To 버텍스위치 GUI
+                    GUILayout.BeginVertical("GroupBox");
+                    Viewer_AveragePos();
+                    GUILayout.EndVertical();
+                }
+            }
+            else if(Ge.SelectToolbar == 2)
+            {
+                
+            }
+
         }
 
         //패스 정보
         void DrawPathInfo()
+        {
+            PathViewerSetting();
+            Ge.AutoUpdate = EditorGUILayout.Toggle("Auto Update", Ge.AutoUpdate);
+
+            EditorGUI.BeginChangeCheck();
+            int PathDetail = EditorGUILayout.IntSlider("PathDetail (Frame)", Ge.PathFrame, 1, 500);
+            PathDetail = Mathf.Max(PathDetail, 1); //최소값
+            Ge.PathFrame = PathDetail;
+            if(EditorGUI.EndChangeCheck()) //패스 디테일 수정하면 업데이트
+            {
+                if(Ge.AutoUpdate)
+                {
+                    CreatePath();
+                }
+            }
+
+            if(!Ge.AutoUpdate)
+            {
+                if (GUILayout.Button("Create Path"))
+                {
+                    CreatePath();
+                }
+            }
+        }
+
+        //패스 정보
+        void DrawPathInfo2()
         {
             PathViewerSetting();
             Ge.AutoUpdate = EditorGUILayout.Toggle("Auto Update", Ge.AutoUpdate);
