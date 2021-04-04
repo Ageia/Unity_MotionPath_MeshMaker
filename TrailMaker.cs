@@ -248,9 +248,9 @@ public class MotionPath : MonoBehaviour
         List<Vector3> VertPos = new List<Vector3>();
         for (int X = 0; X < PathInfo[0].AveragePos.Length; X++) //가로줄
         {
-            //float ValueX = (float)X / (XCount - 1); //베지어에 들어가는 Value값
-            for (int Y = 0; Y <= PathInfo.Count ; Y++) //세로줄
+            for (int Y = 0; Y < PathInfo.Count ; Y++) //세로줄
             {
+                Debug.Log(Y);
                 for (int R = 0; R < CreateMeshInfo.Count_Y; R++)  //세로줄 디테일값
                 {
                     
@@ -263,9 +263,14 @@ public class MotionPath : MonoBehaviour
                     // VertPos.Add(InputVector3);
                     //Debug.Log(X.ToString() + InputVector3);
 
-                    float Value = (float)R / (float)CreateMeshInfo.Count_Y; // 0 ~ 1 까지 값
-                    
+                    //if(Y + 1 < PathInfo.Count)
+                    //{
+                    //    float Value = (float)R / (float)CreateMeshInfo.Count_Y; // 0 ~ 1 까지 값
+                    //    Vector3 InputVector3 = Vector3.Lerp(PathInfo[Y].AveragePos[X], PathInfo[Y + 1].AveragePos[X], Value);
+                    //    VertPos.Add(InputVector3);
+                    //}
                 }
+                VertPos.Add(PathInfo[Y].AveragePos[X]);
             }
         }
         VertPosList = VertPos;
