@@ -26,7 +26,7 @@ public class MotionPath : MonoBehaviour
     /////////////////////////////////////////
     ////////        Path Info        ////////
     /////////////////////////////////////////
-    public List<PathInfoData> PathInfo = new List<PathInfoData>(2);
+    [HideInInspector] public List<PathInfoData> PathInfo = new List<PathInfoData>(2);
     [System.Serializable]
     public class PathInfoData
     {
@@ -42,10 +42,10 @@ public class MotionPath : MonoBehaviour
         [HideInInspector] public float PathWidth = 2;
 
         //버텍스 평균치 구하는 계산 변수들
-        [HideInInspector] public bool Average_AutoUpdate = true; //자동 업데이트
-        public Vector3[] AveragePos = new Vector3[0]; //버텍스 평균 위치
-        [HideInInspector] public int Average_Detail = 10; //디테일값
-        [HideInInspector] public float Average_Distance = 0.25f; //버텍스들의 거리값
+        [HideInInspector] public bool Vertex_AutoUpdate = true; //자동 업데이트
+        public Vector3[] VertexPos = new Vector3[0]; //버텍스 평균 위치
+        [HideInInspector] public int Vertex_Detail = 10; //디테일값
+        [HideInInspector] public float Vertex_Distance = 0.25f; //버텍스들의 거리값
 
         [HideInInspector] public int EditVertIdx = int.MaxValue; //버텍스 위치를 조정하는 기능
         [HideInInspector] public bool EditMode = false; //버텍스 수정 모드
@@ -123,10 +123,19 @@ public class MotionPath : MonoBehaviour
     void OnEnable()
     {
         SceneView.onSceneGUIDelegate += DrawSceneGUI;
+        Undo.undoRedoPerformed += MyUndoCallback;
     }
     void OnDisable()
     {
         SceneView.onSceneGUIDelegate -= DrawSceneGUI;
+        Undo.undoRedoPerformed -= MyUndoCallback;
+    }
+
+    void MyUndoCallback()
+    {
+        //Debug.Log("언두 했음");
+        // code for the action to take on Undo
+        GenerateMesh(PathInfo.Count, CreateMeshInfo.Count_Y, PathInfo[0].VertexPos.Length);
     }
 
     ///////////////////////////////////////
@@ -157,7 +166,7 @@ public class MotionPath : MonoBehaviour
         {
             //선 그리기
             Handles.color = (SelectPath == i && Ge.SelectToolbar == 1 ? new Color(5, 5, 5, 1) : PathInfo[i].PathColor);
-            
+
             Handles.DrawAAPolyLine(PathInfo[i].PathWidth * (SelectPath == i && Ge.SelectToolbar == 1 ? 3 : 1), Ge.PathInfo[i].PathPos.Length, Ge.PathInfo[i].PathPos);
             Handles.color = GUI.color;
 
@@ -170,14 +179,14 @@ public class MotionPath : MonoBehaviour
             }
             else
             {
-                for (int j = 0; j < PathInfo[i].AveragePos.Length; j++)
+                for (int j = 0; j < PathInfo[i].VertexPos.Length; j++)
                 {
-                    Handles.Label(PathInfo[i].AveragePos[j], EditorGUIUtility.IconContent("winbtn_mac_close"), Style_Vert); //버텍스 위치들
+                    Handles.Label(PathInfo[i].VertexPos[j], EditorGUIUtility.IconContent("winbtn_mac_close"), Style_Vert); //버텍스 위치들
                 }
             }
 
             //패스 타겟 아이콘
-            if(PathInfo[i].TargetObject != null)
+            if (PathInfo[i].TargetObject != null)
             {
                 Handles.Label(PathInfo[i].TargetObject.transform.position, EditorGUIUtility.IconContent("DotFrame"), Style_Target); //버텍스 위치들
             }
@@ -198,13 +207,13 @@ public class MotionPath : MonoBehaviour
         float ButtonSize = 15;
         float ButtonPosAdd = -ButtonSize / 2;
         //패스 그리기
-        for (int j = 0; j < GetPathInfo.AveragePos.Length; j++)
+        for (int j = 0; j < GetPathInfo.VertexPos.Length; j++)
         {
             if (j != GetPathInfo.EditVertIdx)
             {
                 Handles.BeginGUI();
                 GUI.backgroundColor = new Color(2, 2, 2);
-                if (GUI.Button(new Rect(HandleUtility.WorldToGUIPoint(GetPathInfo.AveragePos[j]).x + ButtonPosAdd, HandleUtility.WorldToGUIPoint(GetPathInfo.AveragePos[j]).y + ButtonPosAdd, ButtonSize, ButtonSize), ""))
+                if (GUI.Button(new Rect(HandleUtility.WorldToGUIPoint(GetPathInfo.VertexPos[j]).x + ButtonPosAdd, HandleUtility.WorldToGUIPoint(GetPathInfo.VertexPos[j]).y + ButtonPosAdd, ButtonSize, ButtonSize), ""))
                 {
                     GetPathInfo.EditVertIdx = j;
                     //Genarator.MovePosition.Insert(i, new Vector3(Genarator.MovePosition[i].x, Genarator.MovePosition[i].y, Genarator.MovePosition[i].z));
@@ -215,20 +224,19 @@ public class MotionPath : MonoBehaviour
             //현재 선택중인 버텍스
             else
             {
-                Handles.Label(GetPathInfo.AveragePos[j], EditorGUIUtility.IconContent("d_winbtn_mac_min"), Style);
+                Handles.Label(GetPathInfo.VertexPos[j], EditorGUIUtility.IconContent("d_winbtn_mac_min"), Style);
             }
         }
 
         //위치 기즈모
-        if (GetPathInfo.AveragePos.Length > GetPathInfo.EditVertIdx)
+        if (GetPathInfo.VertexPos.Length > GetPathInfo.EditVertIdx)
         {
+            Undo.RecordObject(Ge, "SaveHandlePos");
             EditorGUI.BeginChangeCheck();
-            GetPathInfo.AveragePos[GetPathInfo.EditVertIdx] = Handles.PositionHandle(GetPathInfo.AveragePos[GetPathInfo.EditVertIdx], Quaternion.identity);
-            if(EditorGUI.EndChangeCheck())
+            GetPathInfo.VertexPos[GetPathInfo.EditVertIdx] = Handles.PositionHandle(GetPathInfo.VertexPos[GetPathInfo.EditVertIdx], Quaternion.identity);
+            if (EditorGUI.EndChangeCheck())
             {
-
-                    Ge.GenerateMesh(Ge.PathInfo.Count, Ge.CreateMeshInfo.Count_Y, Ge.PathInfo[0].AveragePos.Length);
-
+                Ge.GenerateMesh(Ge.PathInfo.Count, Ge.CreateMeshInfo.Count_Y, Ge.PathInfo[0].VertexPos.Length);
             }
         }
     }
@@ -241,19 +249,19 @@ public class MotionPath : MonoBehaviour
     ////////////////////////////////////////////////////////////
     #region 
     //메쉬 생성할때 디버그용 GUI
-    [HideInInspector]public bool Debug_VertInfo = false;
-    [HideInInspector]public bool Debug_VertPos = false;
-    [HideInInspector]public bool Debug_DrawTriLine = false;
+    [HideInInspector] public bool Debug_VertInfo = false;
+    [HideInInspector] public bool Debug_VertPos = false;
+    [HideInInspector] public bool Debug_DrawTriLine = false;
     void Viwer_MeshInfo()
     {
-        if(Debug_VertInfo)
+        if (Debug_VertInfo)
         {
             for (int i = 0; i < MeshFilter.mesh.vertices.Length; i++)
             {
                 Handles.Label(MeshFilter.mesh.vertices[i], i.ToString() + (Debug_VertPos ? " " + MeshFilter.mesh.vertices[i] : "")); //버텍스 위치들
             }
         }
-        if(Debug_DrawTriLine)
+        if (Debug_DrawTriLine)
         {
             Debug_DrawTriLineData();
         }
@@ -286,15 +294,18 @@ public class MotionPath : MonoBehaviour
     //컴포넌트 붙였을 때 최초로 생성할 요소들
     void SetMesh()
     {
-        MeshFilter = GetComponent<MeshFilter>();
-        MeshRenderer = GetComponent<MeshRenderer>();
+        if(MeshFilter == null || MeshRenderer == null)
+        {
+            MeshFilter = GetComponent<MeshFilter>();
+            MeshRenderer = GetComponent<MeshRenderer>();
 
-        MeshFilter.mesh = new Mesh();
-        MeshRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        MeshRenderer.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
-        MeshRenderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+            MeshFilter.mesh = new Mesh();
+            MeshRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            MeshRenderer.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+            MeshRenderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
 
-        MeshRenderer.materials[0] = new Material(Shader.Find("Diffuse"));
+            MeshRenderer.material = new Material(Shader.Find("Sprites/Default"));
+        }
     }
 
     ////////////////////////////////////////////////////////////
@@ -309,7 +320,7 @@ public class MotionPath : MonoBehaviour
             {
                 for (int i = 0; i < PathInfo.Count; i++)
                 {
-                    System.Array.Reverse(PathInfo[i].AveragePos);
+                    System.Array.Reverse(PathInfo[i].VertexPos);
                 }
                 BeformFlip = CreateMeshInfo.FlipFace;
             }
@@ -336,23 +347,23 @@ public class MotionPath : MonoBehaviour
     List<Vector3> SetVertPos(int YCount)
     {
         List<Vector3> VertPos = new List<Vector3>();
-        for (int X = 0; X < PathInfo[0].AveragePos.Length; X++) //가로줄
+        for (int X = 0; X < PathInfo[0].VertexPos.Length; X++) //가로줄
         {
             for (int Y = 0; Y < PathInfo.Count; Y++) //세로줄
             {
                 //최초 0번 인덱스는 임의로 추가
-                if(Y == 0)
+                if (Y == 0)
                 {
-                    VertPos.Add(PathInfo[0].AveragePos[X]);
+                    VertPos.Add(PathInfo[0].VertexPos[X]);
                 }
                 //나머지 버텍스들 추가
-                if(Y + 1 < PathInfo.Count)
+                if (Y + 1 < PathInfo.Count)
                 {
                     for (int i = 1; i <= CreateMeshInfo.Count_Y; i++)
                     {
                         float Value = i / (float)CreateMeshInfo.Count_Y;
-                        Vector3 InputPos = Vector3.Lerp(PathInfo[Y].AveragePos[X], PathInfo[Y + 1].AveragePos[X], Value);
-                        VertPos.Add(InputPos);     
+                        Vector3 InputPos = Vector3.Lerp(PathInfo[Y].VertexPos[X], PathInfo[Y + 1].VertexPos[X], Value);
+                        VertPos.Add(InputPos);
                     }
                 }
             }
@@ -361,7 +372,7 @@ public class MotionPath : MonoBehaviour
     }
 
     //Tri 계산
-    public List<Vector3> Tri = new List<Vector3>(0);
+    [HideInInspector] public List<Vector3> Tri = new List<Vector3>(0);
     List<Vector3> SetTriList(int XCount, int YCount)
     {
         //Debug.Log("총갯수 " + "X : " + XCount.ToString() + "  Y : " + YCount.ToString());
@@ -370,7 +381,7 @@ public class MotionPath : MonoBehaviour
 
         //위갯수
         int idx = 0;
-        for (int x = 0; x < XCount - 1; x++) 
+        for (int x = 0; x < XCount - 1; x++)
         {
             //옆갯수
             for (int y = 0; y < YCount - 1; y++)
@@ -441,21 +452,23 @@ public class MotionPath : MonoBehaviour
     #endregion
 
 
-    //패스들의 버텍스 갯수가 모두 일치하는지 확인 안할경우 Mesh버튼 비활성화
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////     패스들의 버텍스 갯수가 모두 일치하는지 확인 안할경우 Mesh버튼 비활성화      ////////////////
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////
     public bool IsSamePathVert()
     {
-        if(PathInfo.Count > 0) //한개라도 있을 경우
+        if (PathInfo.Count > 0) //한개라도 있을 경우
         {
             bool Output = true;
-            int Count = PathInfo[0].AveragePos.Length; //버텍스 갯수 기준
+            int Count = PathInfo[0].VertexPos.Length; //버텍스 갯수 기준
             for (int i = 0; i < PathInfo.Count; i++)
             {
-                if(PathInfo[i].TargetObject == null) //타겟오브젝트 없으면 비활성화
+                if (PathInfo[i].TargetObject == null) //타겟오브젝트 없으면 비활성화
                 {
                     Output = false;
                     break;
                 }
-                if(PathInfo[i].AveragePos.Length != Count) //갯수 동일하지 않으면 비활성화
+                if (PathInfo[i].VertexPos.Length != Count) //갯수 동일하지 않으면 비활성화
                 {
                     Output = false;
                     break;
@@ -469,7 +482,37 @@ public class MotionPath : MonoBehaviour
         }
     }
 
+    ////////////////////////////////////////////
+    //////////      Save Mesh      /////////////
+    ////////////////////////////////////////////
+    //string BeforePath = Path
+    [HideInInspector] string BeforePath = "";
+    public void SaveMesh(Mesh mesh)
+    {
+        //메쉬 새로 생성
+        Mesh NewMesh = (Mesh)UnityEngine.Object.Instantiate(mesh); 
 
+        //이전 경로가 아무것도 없으면 기본 프로젝트 패스로 가져옴
+        string NewBeforePath = (BeforePath.Length != 0) ? BeforePath : Application.dataPath;
+
+        //Path 패널 열어서 저장 경로 가져오기
+        string filePath = 
+        EditorUtility.SaveFilePanelInProject("Save Mesh", "FX_Mesh_" + mesh.name, "asset", "", NewBeforePath);
+        if (filePath == "") return;
+
+        //이전 패스 업데이트
+        //(계속 저장할 때 경로 이전꺼 가져올려고.)
+        BeforePath = filePath;
+
+        //에셋 생성
+        AssetDatabase.CreateAsset(NewMesh, filePath);  
+        
+        //에셋 저장
+        AssetDatabase.SaveAssets();
+
+        //폴더장 초기화
+        AssetDatabase.Refresh();
+    }
 }
 
 [CustomEditor(typeof(MotionPath))]
@@ -479,11 +522,14 @@ public class MotionPath_Editor : Editor
     {
         base.OnInspectorGUI();
 
-        EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
+        //EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
 
         //GUILayout.Space(100);
 
         MotionPath Ge = (MotionPath)target;
+
+        //All Undo
+        Undo.RecordObject(Ge, "All State");
 
         //애니메이터 
         EditorGUI.BeginChangeCheck();
@@ -521,21 +567,36 @@ public class MotionPath_Editor : Editor
         {
             //Ge.SelectToolbar = GUILayout.Toolbar(Ge.SelectToolbar, Ge.ToolbarName, GUILayout.MinHeight(35));
 
-            if(GUILayout.Button("Add Path"))
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Add Path"))
             {
                 Ge.PathInfo.Add(new MotionPath.PathInfoData());
             }
 
+            //패스가 2개 초과일 경우
+            if (Ge.PathInfo.Count > 2)
+            {
+                GUI.backgroundColor = Color.red * 1.5f;
+                if (GUILayout.Button("Remove Path" + " (" + (Ge.SelectPath + 1).ToString() + ")", GUILayout.MaxWidth(130)))
+                {
+                    Ge.PathInfo.RemoveAt(Ge.SelectPath);
+                    Ge.SelectPath = Mathf.Min(Ge.PathInfo.Count - 1, Ge.SelectPath); //지운게 마지막꺼면
+                    SceneView.RepaintAll();
+                    Ge.GenerateMesh(Ge.PathInfo.Count, Ge.CreateMeshInfo.Count_Y, Ge.PathInfo[0].VertexPos.Length);
+                }
+                GUI.backgroundColor = GUI.color;
+            }
+            GUILayout.EndHorizontal();
+
             //////////////////////////////////////////
             //////////      버튼 리스트     ///////////
             //////////////////////////////////////////
-            
+
             EditorGUI.BeginChangeCheck();
             GUILayout.BeginHorizontal();
-
             //Animation버튼
             GUI.backgroundColor = Ge.SelectToolbar == 0 ? new Color(2, 1, 0) : GUI.color;
-            if(GUILayout.Button("Animation", GUILayout.MinHeight(35)))
+            if (GUILayout.Button("Animation", GUILayout.MinHeight(35)))
             {
                 Ge.SelectToolbar = 0;
             }
@@ -544,8 +605,9 @@ public class MotionPath_Editor : Editor
             //Path 버튼
             for (int i = 0; i < Ge.PathInfo.Count; i++)
             {
+                //Path 버튼 선택 했을 때 색
                 GUI.backgroundColor = Ge.SelectToolbar == 1 && Ge.SelectPath == i ? new Color(2, 1, 0) : GUI.color;
-                if(GUILayout.Button("Path " + (i + 1).ToString(), GUILayout.MinHeight(35)))
+                if (GUILayout.Button("Path " + (i + 1).ToString() + " (" + Ge.PathInfo[i].VertexPos.Length.ToString() + ")", GUILayout.MinHeight(35)))
                 {
                     Ge.SelectToolbar = 1;
                     Ge.SelectPath = i;
@@ -554,14 +616,13 @@ public class MotionPath_Editor : Editor
             }
 
             //메쉬 버튼
-            EditorGUI.BeginDisabledGroup(!Ge.IsSamePathVert()); //버튼 비활성화 조건
+
             GUI.backgroundColor = Ge.SelectToolbar == 2 ? new Color(2, 1, 0) : GUI.color;
-            if(GUILayout.Button("Mesh", GUILayout.MinHeight(35)))
+            if (GUILayout.Button("Mesh", GUILayout.MinHeight(35)))
             {
                 Ge.SelectToolbar = 2;
             }
             GUI.backgroundColor = GUI.color;
-            EditorGUI.EndDisabledGroup();
 
 
 
@@ -570,7 +631,7 @@ public class MotionPath_Editor : Editor
 
             //버튼들 누르면 패스 표시 정보 업데이트를 위한 씬 다시 로드
             bool ClickToolbar = EditorGUI.EndChangeCheck();
-            if(ClickToolbar)
+            if (ClickToolbar)
             {
                 SceneView.RepaintAll(); //패스 버튼 누르면 씬 정보 다시 그리기
             }
@@ -605,18 +666,18 @@ public class MotionPath_Editor : Editor
                 }
 
                 //패스가 2개 초과일 경우
-                if(Ge.PathInfo.Count > 2)
-                {
-                    GUI.backgroundColor = Color.red;
-                    if(GUILayout.Button("Remove Path"))
-                    {
-                        Ge.PathInfo.RemoveAt(Ge.SelectPath);
-                        Ge.SelectPath = Mathf.Min(Ge.PathInfo.Count - 1, Ge.SelectPath); //지운게 마지막꺼면
-                        SceneView.RepaintAll();
-                        Ge.GenerateMesh(Ge.PathInfo.Count, Ge.CreateMeshInfo.Count_Y, Ge.PathInfo[0].AveragePos.Length);
-                    }
-                    GUI.backgroundColor = GUI.color; 
-                }
+                // if (Ge.PathInfo.Count > 2)
+                // {
+                //     GUI.backgroundColor = Color.red * 1.5f;
+                //     if (GUILayout.Button("Remove Path"))
+                //     {
+                //         Ge.PathInfo.RemoveAt(Ge.SelectPath);
+                //         Ge.SelectPath = Mathf.Min(Ge.PathInfo.Count - 1, Ge.SelectPath); //지운게 마지막꺼면
+                //         SceneView.RepaintAll();
+                //         Ge.GenerateMesh(Ge.PathInfo.Count, Ge.CreateMeshInfo.Count_Y, Ge.PathInfo[0].VertexPos.Length);
+                //     }
+                //     GUI.backgroundColor = GUI.color;
+                // }
 
                 //오브젝트 있을 때
                 if (Ge.PathInfo[Ge.SelectPath].TargetObject != null)
@@ -628,7 +689,7 @@ public class MotionPath_Editor : Editor
 
                     //패스 To 버텍스위치 GUI
                     GUILayout.BeginVertical("GroupBox");
-                    Viewer_AveragePos(Ge.PathInfo[Ge.SelectPath]);
+                    Viewer_VertexPos(Ge.PathInfo[Ge.SelectPath]);
                     GUILayout.EndVertical();
                 }
             }
@@ -656,7 +717,7 @@ public class MotionPath_Editor : Editor
 
         //     //패스 To 버텍스위치 GUI
         //     GUILayout.BeginVertical("GroupBox");
-        //     Viewer_AveragePos(Ge.PathInfo[Ge.SelectPath]);
+        //     Viewer_VertexPos(Ge.PathInfo[Ge.SelectPath]);
         //     GUILayout.EndVertical();
         // }
 
@@ -706,9 +767,9 @@ public class MotionPath_Editor : Editor
             UpDatePos(); //포즈 업데이트
 
             //버텍스 평균 위치값 자동 업데이트
-            if (GetPathInfo.Average_AutoUpdate)
+            if (GetPathInfo.Vertex_AutoUpdate)
             {
-                CountAveragePos(GetPathInfo); //버텍스 평균 위치값 업데이트
+                CountVertexPos(GetPathInfo); //버텍스 평균 위치값 업데이트
             }
         }
 
@@ -868,25 +929,35 @@ public class MotionPath_Editor : Editor
 
 
     //////////////////////////////////////////////////////////////////////
-    /////////////////////       VertexAverage      ///////////////////////
+    /////////////////////       VertexVertex      ///////////////////////
     //////////////////////////////////////////////////////////////////////
     //패스의 평균치를 구해서 버텍스 할당 뷰어
     #region 패스 평균이 구해서 버텍스 할당 하는기능
-    void Viewer_AveragePos(MotionPath.PathInfoData GetPathInfo)
+    void Viewer_VertexPos(MotionPath.PathInfoData GetPathInfo)
     {
+        
         GUIStyle VertCountFont = new GUIStyle();
         VertCountFont.normal.textColor = Color.green;
         VertCountFont.fontStyle = FontStyle.Bold;
-        EditorGUILayout.LabelField("VertexCount", GetPathInfo.AveragePos.Length.ToString(), VertCountFont);
+        VertCountFont.alignment = TextAnchor.UpperCenter;
+        VertCountFont.fontSize = 18;
+        GUI.backgroundColor = new Color(0.75f, 0.75f, 0.75f, 1);
+        GUILayout.BeginVertical("GroupBox");
+        EditorGUILayout.LabelField("Count : " + GetPathInfo.VertexPos.Length.ToString(), VertCountFont, GUILayout.MinHeight(18));
+        GUILayout.EndVertical();
+        GUI.backgroundColor = GUI.color;
 
         //값 변경시 업데이트
         EditorGUI.BeginChangeCheck();
-        GetPathInfo.Average_AutoUpdate = EditorGUILayout.Toggle("Average_AutoUpdate", GetPathInfo.Average_AutoUpdate);
-        GetPathInfo.Average_Detail = EditorGUILayout.IntSlider("Average_Detail", GetPathInfo.Average_Detail, 1, 100);
-        GetPathInfo.Average_Distance = EditorGUILayout.Slider("Average_Distance", GetPathInfo.Average_Distance, 0.01f, 1);
+        GetPathInfo.Vertex_AutoUpdate = EditorGUILayout.Toggle("Vertex_AutoUpdate", GetPathInfo.Vertex_AutoUpdate);
+        GetPathInfo.Vertex_Detail = EditorGUILayout.IntSlider("Vertex_Detail(Average)", GetPathInfo.Vertex_Detail, 1, 100);
+        GetPathInfo.Vertex_Distance = EditorGUILayout.Slider("Vertex_Distance", GetPathInfo.Vertex_Distance, 0.01f, 1);
         if (EditorGUI.EndChangeCheck())
         {
-            CountAveragePos(GetPathInfo);
+            if (GetPathInfo.Vertex_AutoUpdate)
+            {
+                CountVertexPos(GetPathInfo);
+            }
         }
 
         //버텍스 수정모드
@@ -913,26 +984,26 @@ public class MotionPath_Editor : Editor
         #endregion
 
 
-        if (!GetPathInfo.Average_AutoUpdate)
+        if (!GetPathInfo.Vertex_AutoUpdate)
         {
             if (GUILayout.Button("라인의 평균 버텍스 거리값 계산"))
             {
-                CountAveragePos(GetPathInfo);
+                CountVertexPos(GetPathInfo);
             }
         }
     }
 
     //평균 거리값 계산
-    void CountAveragePos(MotionPath.PathInfoData GetPathInfo)
+    void CountVertexPos(MotionPath.PathInfoData GetPathInfo)
     {
-        GetPathInfo.AveragePos = GetAveragePos(GetPathInfo.PathPos, GetPathInfo.Average_Detail, GetPathInfo.Average_Distance);
+        GetPathInfo.VertexPos = GetVertexPos(GetPathInfo.PathPos, GetPathInfo.Vertex_Detail, GetPathInfo.Vertex_Distance);
         SceneView.RepaintAll();
     }
 
     //평균 위치 구하기 (Detail은 두점 사이에 디테일, 10개면 Lerp를 10번 계산함)
     //Detail = 두점 사이에 디테일, 10개면 Lerp를 10번 계산함 (10 정도가 적당)
     //VertDistance = 버텍스간의 거리
-    Vector3[] GetAveragePos(Vector3[] GetPos, int Detail, float VertDistance)
+    Vector3[] GetVertexPos(Vector3[] GetPos, int Detail, float VertDistance)
     {
         //거리를 비교할 최초값 생성
         Vector3 BeforePoint = new Vector3(0, 0, 0);
@@ -977,43 +1048,81 @@ public class MotionPath_Editor : Editor
     ///////////////////////////////////////////////////////////////////
     /////////////////////       MeshViewer      ///////////////////////
     ///////////////////////////////////////////////////////////////////
-    void GenerateMeshViewer(MotionPath GetMotionPath)
+
+
+    void GenerateMeshViewer(MotionPath Ge)
     {
-        EditorGUI.BeginChangeCheck();
-        GetMotionPath.Debug_VertInfo = EditorGUILayout.Toggle("디버그(VertIdx)", GetMotionPath.Debug_VertInfo);
-        GetMotionPath.Debug_VertPos = EditorGUILayout.Toggle("디버그(VertPos)", GetMotionPath.Debug_VertPos);
-        GetMotionPath.Debug_DrawTriLine = EditorGUILayout.Toggle("디버그(Tris)", GetMotionPath.Debug_DrawTriLine);
-        if(EditorGUI.EndChangeCheck())
-        {
-            SceneView.RepaintAll();
-        }
+        bool SameVert = Ge.IsSamePathVert();
 
-        EditorGUI.BeginChangeCheck();
-        GetMotionPath.CreateMeshInfo.Count_Y = EditorGUILayout.IntSlider("Count_Y", GetMotionPath.CreateMeshInfo.Count_Y, 1, 10);
-        if(GUILayout.Button("InvertUV_X"))
+        GUIStyle Font = new GUIStyle();
+        Font.normal.textColor = Color.green;
+        Font.alignment = TextAnchor.MiddleCenter;
+        Font.fontStyle = FontStyle.Bold;
+        Font.fontSize = 18;
+        
+        if (!SameVert)
         {
-            GetMotionPath.CreateMeshInfo.InvertUV_X = !GetMotionPath.CreateMeshInfo.InvertUV_X;
-        }
-        if(GUILayout.Button("InvertUV_Y"))
-        {
-            GetMotionPath.CreateMeshInfo.InvertUV_Y = !GetMotionPath.CreateMeshInfo.InvertUV_Y;
-        }
-        if(GUILayout.Button("FlipFace"))
-        {
-            GetMotionPath.CreateMeshInfo.FlipFace = !GetMotionPath.CreateMeshInfo.FlipFace;
-        }
-        bool ChangeMeshData = EditorGUI.EndChangeCheck();
-        if(ChangeMeshData) //메쉬 관련 데이터 변경 시 메쉬 다시 구성
-        {
-            GetMotionPath.GenerateMesh(GetMotionPath.PathInfo.Count, GetMotionPath.CreateMeshInfo.Count_Y, GetMotionPath.PathInfo[0].AveragePos.Length);
-        }
 
-        if (GUILayout.Button("GenerateMesh"))
+            GUILayout.Label("Path의 모든 버텍스 갯수가 동일 해야 합니다", Font);
+        }
+        else
         {
-            GetMotionPath.GenerateMesh(GetMotionPath.PathInfo.Count, GetMotionPath.CreateMeshInfo.Count_Y, GetMotionPath.PathInfo[0].AveragePos.Length);
+            GUI.backgroundColor = new Color(0.75f, 0.75f, 0.75f);
+            GUILayout.BeginVertical("GroupBox");
+            GUILayout.Label(Ge.MeshFilter.mesh.vertices.Length.ToString() + " Verts, " + (Ge.MeshFilter.mesh.triangles.Length / 3).ToString() + " tris", Font);
+            GUILayout.EndVertical();
+            GUI.backgroundColor = GUI.color;
+
+            EditorGUI.BeginChangeCheck();
+            Ge.Debug_VertInfo = EditorGUILayout.Toggle("View VertIdx", Ge.Debug_VertInfo);
+            if (Ge.Debug_VertInfo)
+            {
+                Ge.Debug_VertPos = EditorGUILayout.Toggle("View VertPos", Ge.Debug_VertPos);
+            }
+            Ge.Debug_DrawTriLine = EditorGUILayout.Toggle("View Tris", Ge.Debug_DrawTriLine);
+            if (EditorGUI.EndChangeCheck())
+            {
+                SceneView.RepaintAll();
+            }
+
+            
+
+            EditorGUI.BeginChangeCheck();
+            Ge.CreateMeshInfo.Count_Y = EditorGUILayout.IntSlider("Count_Y", Ge.CreateMeshInfo.Count_Y, 1, 10);
+            if (GUILayout.Button("InvertUV_X"))
+            {
+                Ge.CreateMeshInfo.InvertUV_X = !Ge.CreateMeshInfo.InvertUV_X;
+            }
+            if (GUILayout.Button("InvertUV_Y"))
+            {
+                Ge.CreateMeshInfo.InvertUV_Y = !Ge.CreateMeshInfo.InvertUV_Y;
+            }
+            if (GUILayout.Button("FlipFace"))
+            {
+                Ge.CreateMeshInfo.FlipFace = !Ge.CreateMeshInfo.FlipFace;
+            }
+            bool ChangeMeshData = EditorGUI.EndChangeCheck();
+            if (ChangeMeshData) //메쉬 관련 데이터 변경 시 메쉬 다시 구성
+            {
+                Ge.GenerateMesh(Ge.PathInfo.Count, Ge.CreateMeshInfo.Count_Y, Ge.PathInfo[0].VertexPos.Length);
+            }
+
+            if (GUILayout.Button("GenerateMesh (메쉬 생성)"))
+            {
+                Ge.GenerateMesh(Ge.PathInfo.Count, Ge.CreateMeshInfo.Count_Y, Ge.PathInfo[0].VertexPos.Length);
+            }
+
+            EditorGUI.BeginDisabledGroup(Ge.MeshFilter.mesh.vertices.Length == 0); //버튼 비활성화 조건
+            {
+                if(GUILayout.Button("Save Mesh"))
+                {
+                    Ge.SaveMesh(Ge.MeshFilter.mesh);
+                }
+            }
+            EditorGUI.EndDisabledGroup();
+
         }
     }
-
 }
 
 #endif
