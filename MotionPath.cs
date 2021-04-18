@@ -751,25 +751,27 @@ public class MotionPath_Editor : Editor
         //CreatePath (패스 생성)
         void CreatePath(MotionPath.PathInfoData GetPathInfo)
         {
-            float FirstFrame = Ge.AnimationSlider; //현재 포즈 시간 백업
-
-            List<Vector3> NewPathPosition = new List<Vector3>();
-            for (float i = Ge.StartFrame; i < Ge.EndFrame; i += (1f / (float)GetPathInfo.PathFrame))
+            if (GetPathInfo.TargetObject != null)
             {
-                Ge.AnimationSlider = i; //포즈 시간 업데이트
+                float FirstFrame = Ge.AnimationSlider; //현재 포즈 시간 백업
+
+                List<Vector3> NewPathPosition = new List<Vector3>(2);
+                for (float i = Ge.StartFrame; i < Ge.EndFrame; i += (1f / (float)GetPathInfo.PathFrame))
+                {
+                    Ge.AnimationSlider = i; //포즈 시간 업데이트
+                    UpDatePos(); //포즈 업데이트
+                    NewPathPosition.Add(GetPathInfo.TargetObject.transform.position);
+                }
+                GetPathInfo.PathPos = NewPathPosition.ToArray();
+
+                Ge.AnimationSlider = FirstFrame; //처음 설정한 포즈 시간으로 백업
                 UpDatePos(); //포즈 업데이트
-                NewPathPosition.Add(GetPathInfo.TargetObject.transform.position);
-            }
-            GetPathInfo.PathPos = NewPathPosition.ToArray();
 
-
-            Ge.AnimationSlider = FirstFrame; //처음 설정한 포즈 시간으로 백업
-            UpDatePos(); //포즈 업데이트
-
-            //버텍스 평균 위치값 자동 업데이트
-            if (GetPathInfo.Vertex_AutoUpdate)
-            {
-                CountVertexPos(GetPathInfo); //버텍스 평균 위치값 업데이트
+                //버텍스 평균 위치값 자동 업데이트
+                if (GetPathInfo.Vertex_AutoUpdate)
+                {
+                    CountVertexPos(GetPathInfo); //버텍스 평균 위치값 업데이트
+                }
             }
         }
 
